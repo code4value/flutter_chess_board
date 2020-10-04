@@ -93,7 +93,21 @@ enum BoardType {
   darkBrown,
   orange,
   green,
+  darkGreen,
+  blue,
 }
+
+const Map<BoardType, List<Color>> COLOR_MAP = const {
+  BoardType.brown: [Color.fromARGB(255, 238, 222, 190), Color.fromARGB(255, 181, 135, 99)],
+  BoardType.darkBrown: [Color.fromARGB(255, 238, 222, 190), Color.fromARGB(255, 126, 108, 98)],
+  BoardType.orange: [Color.fromARGB(255, 238, 222, 190), Color.fromARGB(255, 204, 114, 58)],
+  BoardType.green: [Color.fromARGB(255, 238, 238, 210), Color.fromARGB(255, 118, 150, 86)],
+  BoardType.darkGreen: [Color.fromARGB(255, 238, 238, 210), Color.fromARGB(255, 47, 109, 18)],
+  BoardType.blue: [Color.fromARGB(255, 238, 238, 210), Color.fromARGB(255, 113, 134, 184)]
+};
+
+const Color HIGHLIGHT_COLOR = Color.fromRGBO(255, 195, 0, 0.6);
+const Color HIGHLIGHT_COLOR_2 = Color.fromRGBO(255, 215, 0, 0.5);
 
 /// The Chessboard Widget
 class ChessBoard extends StatefulWidget {
@@ -124,6 +138,18 @@ class ChessBoard extends StatefulWidget {
   /// The color type of the board
   final BoardType boardType;
 
+  /// The background color of the square piece selected
+  final Color bgColorPieceSelected;
+
+  /// The background color of the square piece moved from
+  final Color bgColorPieceFrom;
+
+  /// The background color of the square piece moved to
+  final Color bgColorPieceTo;
+
+  /// The color type of the board
+  final bool showPosition;
+
   ChessBoard({
     this.size = 200.0,
     this.whiteSideTowardsUser = true,
@@ -133,7 +159,11 @@ class ChessBoard extends StatefulWidget {
     @required this.onDraw,
     this.chessBoardController,
     this.enableUserMoves = true,
-    this.boardType = BoardType.brown,
+    this.boardType = BoardType.darkGreen,
+    this.bgColorPieceSelected = HIGHLIGHT_COLOR,
+    this.bgColorPieceFrom = HIGHLIGHT_COLOR_2,
+    this.bgColorPieceTo = HIGHLIGHT_COLOR_2,
+    this.showPosition = true,
   });
 
   @override
@@ -143,8 +173,8 @@ class ChessBoard extends StatefulWidget {
 class _ChessBoardState extends State<ChessBoard> {
   @override
   Widget build(BuildContext context) {
-    return ScopedModel(
-      model: BoardModel(
+
+    BoardModel model = BoardModel(
         widget.size,
         widget.onMove,
         widget.onCheckMate,
@@ -153,7 +183,13 @@ class _ChessBoardState extends State<ChessBoard> {
         widget.whiteSideTowardsUser,
         widget.chessBoardController,
         widget.enableUserMoves,
-      ),
+        widget.bgColorPieceSelected,
+        widget.bgColorPieceFrom,
+        widget.bgColorPieceTo,
+      );
+
+    return ScopedModel(
+      model: model,
       child: Container(
         height: widget.size,
         width: widget.size,
@@ -162,7 +198,7 @@ class _ChessBoardState extends State<ChessBoard> {
             Container(
               height: widget.size,
               width: widget.size,
-              child: _getBoardImage(),
+              child: _getBoardWidget(),
             ),
             //Overlaying draggables/ dragTargets onto the squares
             Center(
@@ -195,13 +231,102 @@ class _ChessBoardState extends State<ChessBoard> {
     );
   }
 
-  /// Returns the board image
-  Image _getBoardImage() {
+  Widget _getSquareLabel(int row, int column) {
+    Widget label1;
+    if ( column == 7 ) {
+      label1 = Text((8-row).toString(),
+          style: TextStyle(
+            color: row % 2 == 0? COLOR_MAP[widget.boardType][0] : COLOR_MAP[widget.boardType][1]
+          ),
+          textAlign: TextAlign.right
+      );
+    }
+    Widget label2;
+    if ( row == 7 ) {
+      int c = "a".codeUnitAt(0);
+      label2 = Align(
+          alignment: Alignment.bottomLeft,
+          child: Text(new String.fromCharCode(c + column),
+            style: TextStyle(
+              color: column % 2 == 0? COLOR_MAP[widget.boardType][0] : COLOR_MAP[widget.boardType][1],
+              letterSpacing: 1.0,
+            ),
+            textAlign: TextAlign.left
+          )
+      );
+    }
+    Widget label;
+    if ( label1!=null && label2!=null ) {
+      double squareSize = widget.size/8;
+      label = Stack(children: [
+        Container(
+          height: squareSize,
+          width: squareSize,
+          child: label1,
+        )
+        , label2]);
+    }
+    else if ( label1!=null ) {
+      label = label1;
+    }
+    else {
+      label = label2;
+    }
+    return label;
+  }
+
+  Widget _getBoardWidget() {
+    double squareSize = widget.size/8;
+
+    List<Widget> rows = List();
+    for (var i=0; i<8; i++) {
+      List<Widget> boardSquares = List();
+      for (var j=0; j<8; j++) {
+        Color squareColor = i % 2 == j % 2? COLOR_MAP[widget.boardType][0] : COLOR_MAP[widget.boardType][1];
+        Widget label = widget.showPosition &&(i==7 || j==7)? _getSquareLabel(i, j) : null;
+
+        Container square;
+        if ( label == null ) {
+          square = Container(
+            color: squareColor,
+            width: squareSize,
+            height: squareSize
+          );
+        }
+        else {
+          square = Container(
+            color: squareColor,
+            width: squareSize,
+            height: squareSize,
+            child: label
+          );
+        }
+        boardSquares.add(square);
+      }
+      Row row = Row(
+        children: boardSquares,
+      );
+      rows.add(row);
+    }
+    if ( widget.showPosition ) {
+      List<Widget> labels = List();
+      int c = "a".codeUnitAt(0);
+      for (int column=0; column<8; column++) {
+        labels.add(Text(new String.fromCharCode(c + column), textDirection: TextDirection.rtl));
+      }
+    }
+    Widget board = Column(
+      children: rows,
+    );
+    return board;
+  }
+
+  Widget _getBoardImage() {
     switch (widget.boardType) {
       case BoardType.brown:
         return Image.asset(
           "images/brown_board.png",
-          package: 'flutter_chess_board',
+          // package: 'flutter_chess_board',
           fit: BoxFit.cover,
         );
       case BoardType.darkBrown:

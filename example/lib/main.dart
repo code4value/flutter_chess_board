@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_chess_board/src/chess_board.dart';
 
@@ -25,6 +26,11 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
+
+    var padding = MediaQuery.of(context).padding;
+    var barHeight = AppBar().preferredSize.height;
+    double safeHeight = MediaQuery.of(context).size.height - padding.top - padding.bottom - barHeight;
+
     return Scaffold(
       appBar: AppBar(),
       body: Center(
@@ -42,7 +48,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 print(color);
               },
               onDraw: () {},
-              size: MediaQuery.of(context).size.width,
+              size: min(MediaQuery.of(context).size.width, safeHeight),
               enableUserMoves: true,
             )
           ],

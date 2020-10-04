@@ -12,6 +12,15 @@ class BoardModel extends Model {
   /// The size of the board (The board is a square)
   double size;
 
+  /// The background color of the square piece selected
+  Color bgColorPieceSelected;
+
+  /// The background color of the square piece moved from
+  Color bgColorPieceFrom;
+
+  /// The background color of the square piece moved to
+  Color bgColorPieceTo;
+
   /// Callback for when a move is made
   MoveCallback onMove;
 
@@ -36,13 +45,17 @@ class BoardModel extends Model {
   /// Creates a logical game
   chess.Chess game = chess.Chess();
 
+  String selectedSquare;
+
+  List<chess.Move> legalMoves;
+
   /// Refreshes board
   void refreshBoard() {
     if (game.in_checkmate) {
       onCheckMate(game.turn == chess.Color.WHITE ? PieceColor.White : PieceColor.Black);
     }
     else if (game.in_draw || game.in_stalemate || game.in_threefold_repetition || game.insufficient_material) {
-      onDraw();    
+      onDraw();
     }
     else if (game.in_check) {
       onCheck(game.turn == chess.Color.WHITE ? PieceColor.White : PieceColor.Black);
@@ -58,7 +71,10 @@ class BoardModel extends Model {
       this.onDraw,
       this.whiteSideTowardsUser,
       this.chessBoardController,
-      this.enableUserMoves) {
+      this.enableUserMoves,
+      this.bgColorPieceSelected,
+      this.bgColorPieceFrom,
+      this.bgColorPieceTo) {
     chessBoardController?.game = game;
     chessBoardController?.refreshBoard = refreshBoard;
   }

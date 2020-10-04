@@ -30,10 +30,13 @@ class BoardSquare extends StatelessWidget {
                     model.game.get(squareName).color,
                   ],
                 )
-              : Container();
+              : _getSquareToDisplay(size: model.size / 8, model: model);
         }, onWillAccept: (willAccept) {
           return model.enableUserMoves ? true : false;
         }, onAccept: (List moveInfo) {
+          model.selectedSquare = null;
+          model.legalMoves = null;
+
           // A way to check if move occurred.
           chess.Color moveColor = model.game.turn;
 
@@ -44,6 +47,7 @@ class BoardSquare extends StatelessWidget {
                   (moveInfo[0][1] == "2" &&
                       squareName[1] == "1" &&
                       moveInfo[2] == chess.Color.BLACK))) {
+            // promotion
             _promotionDialog(context).then((value) {
               model.game.move(
                   {"from": moveInfo[0], "to": squareName, "promotion": value});
@@ -106,14 +110,63 @@ class BoardSquare extends StatelessWidget {
     });
   }
 
+  Widget _getSquareToDisplay({double size, BoardModel model}) {
+    Color bgColor = null;
+    if ( model.bgColorPieceFrom != null && model.game.history.isNotEmpty ) {
+      if ( model.game.history.last.move.flags & chess.Chess.BITS_KSIDE_CASTLE != 0 ) {
+        // castling
+        if ( (this.squareName == 'h1' && model.game.history.last.move.fromAlgebraic == 'e1') ||
+          (this.squareName == 'h8' && model.game.history.last.move.fromAlgebraic == 'e8' )) {
+            bgColor = model.bgColorPieceFrom;
+        }
+      }
+      if ( model.game.history.last.move.flags & chess.Chess.BITS_QSIDE_CASTLE != 0 ) {
+        // castling
+        if ( (this.squareName == 'a1' && model.game.history.last.move.fromAlgebraic == 'e1') ||
+          (this.squareName == 'a8' && model.game.history.last.move.fromAlgebraic == 'e8' )) {
+          bgColor = model.bgColorPieceFrom;
+        }
+      }
+      if (this.squareName == model.game.history.last.move.fromAlgebraic) {
+        // if moved from the square
+        bgColor = model.bgColorPieceFrom;
+      }
+    }
+
+    if ( model.legalMoves != null ) {
+      for(chess.Move move in model.legalMoves) {
+        if ( this.squareName == move.toAlgebraic ) {
+          return Container(
+            color: bgColor,
+            width: size,
+            height: size,
+            alignment: Alignment.center,
+            child: new SizedBox(
+              width: size/4,
+              height: size/4,
+              child: new DecoratedBox (
+                decoration: new BoxDecoration(
+                  color: model.bgColorPieceSelected,
+                  shape: BoxShape.circle,
+                ),
+              )
+            )
+          );
+        }
+      }
+    }
+
+    return Container(color: bgColor);
+  }
+
   /// Get image to display on square
   Widget _getImageToDisplay({double size, BoardModel model}) {
-    Widget imageToDisplay = Container();
 
     if (model.game.get(squareName) == null) {
       return Container();
     }
 
+    Widget imageToDisplay = Container();
     String piece = model.game
             .get(squareName)
             .color
@@ -163,6 +216,78 @@ class BoardSquare extends StatelessWidget {
         imageToDisplay = WhitePawn(size: size);
     }
 
-    return imageToDisplay;
+    Widget imageItem = imageToDisplay;
+    if ( model.legalMoves != null ) {
+      for(chess.Move move in model.legalMoves) {
+        if ( this.squareName == move.toAlgebraic ) {
+          Container newContainer = new Container(
+            decoration: new BoxDecoration(
+              color: model.bgColorPieceSelected,
+              shape: BoxShape.circle,
+            ),
+            child: imageToDisplay
+          );
+          imageItem = newContainer;
+          break;
+        }
+      }
+    }
+
+    GestureDetector squareItem = new GestureDetector(
+        onTap: (){
+          if ( model.game.get(squareName).color != model.game.turn ) {
+            // not ready for the opponent yet
+            return;
+          }
+
+          Map options = {"valid": true, "square": this.squareName};
+          List<chess.Move> moves = model.game.generate_moves(options);
+          model.selectedSquare = this.squareName;
+          model.legalMoves = moves;
+
+          model.refreshBoard();
+        },
+        child: imageItem
+    );
+
+    if (this.squareName == model.selectedSquare) {
+      return Container(
+        color: model.bgColorPieceSelected,
+        child: squareItem
+      );
+    }
+
+    if ( model.bgColorPieceTo != null && model.game.history.isNotEmpty ) {
+      if ( model.game.history.last.move.flags & chess.Chess.BITS_KSIDE_CASTLE != 0 ) {
+        // castling
+        if ( (this.squareName == 'f1' && model.game.history.last.move.fromAlgebraic == 'e1') ||
+          (this.squareName == 'f8' && model.game.history.last.move.fromAlgebraic == 'e8' )) {
+          return Container(
+            color: model.bgColorPieceTo,
+            child: squareItem
+          );
+        }
+      }
+      if ( model.game.history.last.move.flags & chess.Chess.BITS_QSIDE_CASTLE != 0 ) {
+        // castling
+        if ( (this.squareName == 'd1' && model.game.history.last.move.fromAlgebraic == 'e1') ||
+          (this.squareName == 'd8' && model.game.history.last.move.fromAlgebraic == 'e8' )) {
+          return Container(
+            color: model.bgColorPieceTo,
+            child: squareItem
+          );
+        }
+      }
+
+      if (this.squareName == model.game.history.last.move.toAlgebraic) {
+        // if moved to the square, overlay
+        return Container(
+          color: model.bgColorPieceTo,
+          child: squareItem
+        );
+      }
+    }
+
+    return squareItem;
   }
 }
