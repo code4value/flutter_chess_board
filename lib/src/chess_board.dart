@@ -97,6 +97,14 @@ enum BoardType {
   blue,
 }
 
+enum PositionLabelOption {
+  none,
+  leftBottomInner,
+  leftBottomOuter,
+  rightBottomInner,
+  rightBottomOuter,
+}
+
 const Map<BoardType, List<Color>> COLOR_MAP = const {
   BoardType.brown: [Color.fromARGB(255, 238, 222, 190), Color.fromARGB(255, 181, 135, 99)],
   BoardType.darkBrown: [Color.fromARGB(255, 238, 222, 190), Color.fromARGB(255, 126, 108, 98)],
@@ -147,8 +155,8 @@ class ChessBoard extends StatefulWidget {
   /// The background color of the square piece moved to
   final Color bgColorPieceTo;
 
-  /// The color type of the board
-  final bool showPosition;
+  /// The option of position labels
+  final PositionLabelOption positionLabelOption;
 
   ChessBoard({
     this.size = 200.0,
@@ -163,7 +171,7 @@ class ChessBoard extends StatefulWidget {
     this.bgColorPieceSelected = HIGHLIGHT_COLOR,
     this.bgColorPieceFrom = HIGHLIGHT_COLOR_2,
     this.bgColorPieceTo = HIGHLIGHT_COLOR_2,
-    this.showPosition = true,
+    this.positionLabelOption = PositionLabelOption.leftBottomInner,
   });
 
   @override
@@ -173,9 +181,14 @@ class ChessBoard extends StatefulWidget {
 class _ChessBoardState extends State<ChessBoard> {
   @override
   Widget build(BuildContext context) {
+    double boardSize = widget.size;
+    if ( widget.positionLabelOption == PositionLabelOption.leftBottomOuter ||
+         widget.positionLabelOption == PositionLabelOption.rightBottomOuter ) {
+      boardSize = widget.size - widget.size/16;  // half of square size
+    }
 
     BoardModel model = BoardModel(
-        widget.size,
+        boardSize,
         widget.onMove,
         widget.onCheckMate,
         widget.onCheck,
@@ -188,30 +201,75 @@ class _ChessBoardState extends State<ChessBoard> {
         widget.bgColorPieceTo,
       );
 
-    return ScopedModel(
+    Widget boardContainer = ScopedModel(
       model: model,
-      child: Container(
-        height: widget.size,
-        width: widget.size,
+      child: Container (
+        height: boardSize,
+        width: boardSize,
         child: Stack(
           children: <Widget>[
             Container(
-              height: widget.size,
-              width: widget.size,
-              child: _getBoardWidget(),
+              height: boardSize,
+              width: boardSize,
+              child: _getBoardWidget(boardSize),
             ),
-            //Overlaying draggables/ dragTargets onto the squares
+            // Overlaying draggables/ dragTargets onto the squares
             Center(
               child: Container(
-                height: widget.size,
-                width: widget.size,
+                height: boardSize,
+                width: boardSize,
                 child: buildChessBoard(),
               ),
             )
           ],
-        ),
-      ),
+        )
+      )
     );
+
+
+    Widget boardWidget;
+    if ( widget.positionLabelOption == PositionLabelOption.leftBottomOuter ||
+      widget.positionLabelOption == PositionLabelOption.rightBottomOuter ) {
+
+      double squareSize = boardSize/8;
+      Widget labels18 = _buildOuterSquareLabels18(squareSize);
+      Widget labelsAH = _buildOuterSquareLabelsAH(squareSize);
+
+      var row1 = widget.positionLabelOption == PositionLabelOption.leftBottomOuter?
+        <Widget>[ labels18, boardContainer ]: <Widget>[ boardContainer, labels18 ];
+      var row2 = widget.positionLabelOption == PositionLabelOption.leftBottomOuter?
+        <Widget>[Container(width: squareSize/2, height: squareSize/2), labelsAH]:
+        <Widget>[labelsAH, Container(width: squareSize/2, height: squareSize/2)];
+
+      boardWidget = Container(
+        width: widget.size,
+        // height: widget.size,
+        child: ListView (
+          shrinkWrap: true,
+          children: <Widget>[
+            Container(
+              height: boardSize,
+              child: ListView (
+                scrollDirection: Axis.horizontal,
+                children: row1
+              )
+            ),
+            Container(
+              height: squareSize/2,
+              child: ListView (
+                scrollDirection: Axis.horizontal,
+                children: row2
+              )
+            )
+          ]
+        )
+      );
+    }
+    else {
+      boardWidget = boardContainer;
+    }
+
+    return boardWidget;
   }
 
   /// Builds the board
@@ -231,20 +289,73 @@ class _ChessBoardState extends State<ChessBoard> {
     );
   }
 
-  Widget _getSquareLabel(int row, int column) {
-    Widget label1;
-    if ( column == 7 ) {
-      label1 = Text((8-row).toString(),
+  Widget _buildOuterSquareLabels18(double squareSize) {
+    return Container(
+      width: squareSize / 2,
+      height: squareSize * 8,
+      child: ListView(
+        padding: const EdgeInsets.all(0),
+        shrinkWrap: true,
+        children: List.generate(8, (index) {
+          return Container(
+            width: squareSize / 2,
+            height: squareSize,
+            child: Text((index+1).toString(),
+              textAlign: TextAlign.center
+            )
+          );
+        })
+      )
+    );
+  }
+
+  Widget _buildOuterSquareLabelsAH(double squareSize) {
+    int c = "a".codeUnitAt(0);
+    return Container(
+      width: squareSize * 8,
+      height: squareSize / 2,
+      child: ListView(
+        padding: const EdgeInsets.all(0),
+        scrollDirection: Axis.horizontal,
+        children: List.generate(8, (index) {
+          return Container(
+            width: squareSize,
+            height: squareSize / 2,
+            child: Text(new String.fromCharCode(c + index),
+              textAlign: TextAlign.center
+            )
+          );
+        })
+      )
+    );
+  }
+
+  Widget _buildInnerSquareLabel(int row, int column, double squareSize) {
+    Widget label18;  // 1, 2, 3...
+    Widget labelAH;  // a, b, c...
+    if ( widget.positionLabelOption == PositionLabelOption.leftBottomInner && column == 0) {
+      // label on 1st column
+      label18 = Text((8-row).toString(),
+          style: TextStyle(
+            color: row % 2 == 0? COLOR_MAP[widget.boardType][1] : COLOR_MAP[widget.boardType][0]
+          ),
+          textAlign: TextAlign.left
+      );
+    }
+    else if ( widget.positionLabelOption == PositionLabelOption.rightBottomInner && column == 7 ) {
+      // label on last column
+      label18 = Text((8-row).toString(),
           style: TextStyle(
             color: row % 2 == 0? COLOR_MAP[widget.boardType][0] : COLOR_MAP[widget.boardType][1]
           ),
           textAlign: TextAlign.right
       );
     }
-    Widget label2;
-    if ( row == 7 ) {
+
+    if ( (widget.positionLabelOption == PositionLabelOption.leftBottomInner ||
+           widget.positionLabelOption == PositionLabelOption.rightBottomInner) && row == 7 ) {
       int c = "a".codeUnitAt(0);
-      label2 = Align(
+      labelAH = Align(
           alignment: Alignment.bottomLeft,
           child: Text(new String.fromCharCode(c + column),
             style: TextStyle(
@@ -255,35 +366,34 @@ class _ChessBoardState extends State<ChessBoard> {
           )
       );
     }
+
     Widget label;
-    if ( label1!=null && label2!=null ) {
-      double squareSize = widget.size/8;
+    if ( label18!=null && labelAH!=null ) {
       label = Stack(children: [
         Container(
           height: squareSize,
           width: squareSize,
-          child: label1,
+          child: label18,
         )
-        , label2]);
+        , labelAH]);
     }
-    else if ( label1!=null ) {
-      label = label1;
+    else if ( label18!=null ) {
+      label = label18;
     }
     else {
-      label = label2;
+      label = labelAH;
     }
     return label;
   }
 
-  Widget _getBoardWidget() {
-    double squareSize = widget.size/8;
-
+  Widget _getBoardWidget(double boardSize) {
+    double squareSize = boardSize / 8;
     List<Widget> rows = List();
     for (var i=0; i<8; i++) {
       List<Widget> boardSquares = List();
       for (var j=0; j<8; j++) {
         Color squareColor = i % 2 == j % 2? COLOR_MAP[widget.boardType][0] : COLOR_MAP[widget.boardType][1];
-        Widget label = widget.showPosition &&(i==7 || j==7)? _getSquareLabel(i, j) : null;
+        Widget label = _buildInnerSquareLabel(i, j, squareSize);
 
         Container square;
         if ( label == null ) {
@@ -308,7 +418,7 @@ class _ChessBoardState extends State<ChessBoard> {
       );
       rows.add(row);
     }
-    if ( widget.showPosition ) {
+    if ( widget.positionLabelOption == PositionLabelOption.leftBottomInner ) {
       List<Widget> labels = List();
       int c = "a".codeUnitAt(0);
       for (int column=0; column<8; column++) {

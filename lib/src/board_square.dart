@@ -111,7 +111,7 @@ class BoardSquare extends StatelessWidget {
   }
 
   Widget _getSquareToDisplay({double size, BoardModel model}) {
-    Color bgColor = null;
+    Color bgColor;
     if ( model.bgColorPieceFrom != null && model.game.history.isNotEmpty ) {
       if ( model.game.history.last.move.flags & chess.Chess.BITS_KSIDE_CASTLE != 0 ) {
         // castling
@@ -161,7 +161,6 @@ class BoardSquare extends StatelessWidget {
 
   /// Get image to display on square
   Widget _getImageToDisplay({double size, BoardModel model}) {
-
     if (model.game.get(squareName) == null) {
       return Container();
     }
