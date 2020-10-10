@@ -46,6 +46,12 @@ class ChessBoardController {
     refreshBoard == null ? this._throwNotAttachedException() : refreshBoard();
   }
 
+  /// Loads a FEN
+  void loadFEN(String fen) {
+    game?.load(fen);
+    refreshBoard == null ? this._throwNotAttachedException() : refreshBoard();
+  }
+
   /// Loads a PGN
   void loadPGN(String pgn) {
     game?.load_pgn(pgn);

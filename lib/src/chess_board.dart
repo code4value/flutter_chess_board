@@ -99,6 +99,7 @@ enum BoardType {
 
 enum PositionLabelOption {
   none,
+  outer,
   leftBottomInner,
   leftBottomOuter,
   rightBottomInner,
@@ -171,7 +172,7 @@ class ChessBoard extends StatefulWidget {
     this.bgColorPieceSelected = HIGHLIGHT_COLOR,
     this.bgColorPieceFrom = HIGHLIGHT_COLOR_2,
     this.bgColorPieceTo = HIGHLIGHT_COLOR_2,
-    this.positionLabelOption = PositionLabelOption.leftBottomInner,
+    this.positionLabelOption = PositionLabelOption.leftBottomOuter,
   });
 
   @override
@@ -182,7 +183,10 @@ class _ChessBoardState extends State<ChessBoard> {
   @override
   Widget build(BuildContext context) {
     double boardSize = widget.size;
-    if ( widget.positionLabelOption == PositionLabelOption.leftBottomOuter ||
+    if ( widget.positionLabelOption == PositionLabelOption.outer ) {
+      boardSize = widget.size - widget.size/8;  // square size
+    }
+    else if ( widget.positionLabelOption == PositionLabelOption.leftBottomOuter ||
          widget.positionLabelOption == PositionLabelOption.rightBottomOuter ) {
       boardSize = widget.size - widget.size/16;  // half of square size
     }
@@ -228,18 +232,29 @@ class _ChessBoardState extends State<ChessBoard> {
 
 
     Widget boardWidget;
-    if ( widget.positionLabelOption == PositionLabelOption.leftBottomOuter ||
+    if ( widget.positionLabelOption == PositionLabelOption.outer ||
+      widget.positionLabelOption == PositionLabelOption.leftBottomOuter ||
       widget.positionLabelOption == PositionLabelOption.rightBottomOuter ) {
 
       double squareSize = boardSize/8;
       Widget labels18 = _buildOuterSquareLabels18(squareSize);
       Widget labelsAH = _buildOuterSquareLabelsAH(squareSize);
 
-      var row1 = widget.positionLabelOption == PositionLabelOption.leftBottomOuter?
-        <Widget>[ labels18, boardContainer ]: <Widget>[ boardContainer, labels18 ];
-      var row2 = widget.positionLabelOption == PositionLabelOption.leftBottomOuter?
-        <Widget>[Container(width: squareSize/2, height: squareSize/2), labelsAH]:
-        <Widget>[labelsAH, Container(width: squareSize/2, height: squareSize/2)];
+      var labelSize = squareSize/2;
+
+      var row0 = widget.positionLabelOption == PositionLabelOption.outer?
+        <Widget>[Container(width: labelSize, height: labelSize), labelsAH, Container(width: labelSize, height: labelSize)] : null;
+
+      var row1 = widget.positionLabelOption == PositionLabelOption.outer?
+        <Widget>[ labels18, boardContainer, labels18] :
+        (widget.positionLabelOption == PositionLabelOption.leftBottomOuter?
+          <Widget>[ labels18, boardContainer ]: <Widget>[ boardContainer, labels18 ]);
+
+      var row2 = widget.positionLabelOption == PositionLabelOption.outer?
+        <Widget>[Container(width: labelSize, height: labelSize), labelsAH, Container(width: labelSize, height: labelSize)] :
+        (widget.positionLabelOption == PositionLabelOption.leftBottomOuter?
+          <Widget>[Container(width: labelSize, height: labelSize), labelsAH]:
+          <Widget>[labelsAH, Container(width: labelSize, height: labelSize)]);
 
       boardWidget = Container(
         width: widget.size,
@@ -247,6 +262,14 @@ class _ChessBoardState extends State<ChessBoard> {
         child: ListView (
           shrinkWrap: true,
           children: <Widget>[
+            row0 == null? Container() :
+            Container(
+              height: labelSize,
+              child: ListView (
+                scrollDirection: Axis.horizontal,
+                children: row0
+              )
+            ),
             Container(
               height: boardSize,
               child: ListView (
@@ -255,7 +278,7 @@ class _ChessBoardState extends State<ChessBoard> {
               )
             ),
             Container(
-              height: squareSize/2,
+              height: labelSize,
               child: ListView (
                 scrollDirection: Axis.horizontal,
                 children: row2
@@ -300,7 +323,7 @@ class _ChessBoardState extends State<ChessBoard> {
           return Container(
             width: squareSize / 2,
             height: squareSize,
-            child: Text((index+1).toString(),
+            child: Text((widget.whiteSideTowardsUser? 8 - index: index + 1).toString(),
               textAlign: TextAlign.center
             )
           );
@@ -321,7 +344,7 @@ class _ChessBoardState extends State<ChessBoard> {
           return Container(
             width: squareSize,
             height: squareSize / 2,
-            child: Text(new String.fromCharCode(c + index),
+            child: Text(new String.fromCharCode(widget.whiteSideTowardsUser? c + index : c + 7 - index),
               textAlign: TextAlign.center
             )
           );
